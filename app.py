@@ -1,13 +1,36 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import numpy as np
 import tensorflow as tf
 from PIL import Image
 import io
 import sqlite3
 import random
-from PIL import Image
+from functools import wraps
 
 app = Flask(__name__)
+
+# Authentication
+USERNAME = 'mavin_sandeep'
+PASSWORD = 'Mavin@2003'
+
+def check_auth(username, password):
+    return username == USERNAME and password == PASSWORD
+
+def authenticate():
+    message = {'message': "Authenticate."}
+    resp = jsonify(message)
+    resp.status_code = 401
+    resp.headers['WWW-Authenticate'] = 'Basic realm="Main"'
+    return resp
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
 
 # Load TFLite model and allocate tensors
 interpreter = tf.lite.Interpreter(model_path="cow_muzzle_feature_extractor.tflite")
@@ -103,8 +126,19 @@ def predict():
         new_image_id = str(random.randint(10, 99))
         save_features(features, new_image_id)
 
-        return jsonify({'image_id': new_image_id})
+        return jsonify({'image_id': new_image_id, 'similarity': similarity})
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Define a route to view database content with authentication
+@app.route('/view_db', methods=['GET'])
+@requires_auth
+def view_db():
+    try:
+        all_features = get_all_features()
+        rows = [{'image_id': image_id, 'features': features.tolist()} for features, image_id in all_features]
+        return render_template('view_db.html', rows=rows)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
