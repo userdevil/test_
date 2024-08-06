@@ -126,7 +126,7 @@ def predict():
         new_image_id = str(random.randint(10, 99))
         save_features(features, new_image_id)
 
-        return jsonify({'image_id': new_image_id, 'similarity': similarity})
+        return jsonify({'image_id': new_image_id})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
