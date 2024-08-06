@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database View</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h2>Database Content</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Image ID</th>
+                <th>Features</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.image_id }}</td>
+                <td>{{ row.features }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
