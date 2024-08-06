@@ -1,38 +1,63 @@
 from flask import Flask, request, jsonify
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 import os
-import time
+import requests
 
 app = Flask(__name__)
 
-# Load TFLite model and allocate tensors
-interpreter = tf.lite.Interpreter(model_path="cow_muzzle_feature_extractor.tflite")
-interpreter.allocate_tensors()
+# URL of the Keras model
+MODEL_URL = "https://firebasestorage.googleapis.com/v0/b/test-75d65.appspot.com/o/cow_muzzle_feature_extractor.h5?alt=media&token=9bcaf85e-e935-4e49-84bb-2c0476a8e75c"
+MODEL_PATH = "cow_muzzle_feature_extractor.h5"
 
-# Get input and output tensors
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+def download_model(url, save_path):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Check for HTTP errors
+        with open(save_path, 'wb') as f:
+            f.write(response.content)
+        print(f"Model downloaded and saved to {save_path}")
+    except requests.RequestException as e:
+        print(f"Error downloading model: {e}")
+        raise
+
+# Check if model file exists, if not, download it
+if not os.path.exists(MODEL_PATH):
+    download_model(MODEL_URL, MODEL_PATH)
+
+# Load Keras model
+model = load_model(MODEL_PATH)
+
+# Print the expected input shape
+input_shape = model.input_shape
+print('Expected input shape:', input_shape)
 
 # Function to preprocess and load an image
 def preprocess_image(img_path):
-    img = image.load_img(img_path, target_size=(input_details[0]['shape'][1], input_details[0]['shape'][2]))
+    img = image.load_img(img_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-    img_array /= 255.0  # Normalize
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = img_array / 255.0  # Rescale the image
+    print("Image shape after preprocessing:", img_array.shape)
     return img_array
 
-# Extract features from an image using the TFLite model
+# Extract features from an image using the Keras model
 def extract_features(img_array):
-    # Ensure that img_array is in the correct shape
-    img_array = np.array(img_array, dtype=np.float32)  # Ensure the type is float32
-    if not np.array_equal(img_array.shape, input_details[0]['shape']):
-        raise ValueError(f"Input shape {img_array.shape} does not match model's expected shape {input_details[0]['shape']}")
+    start_time = time.time()
+
+    img_array = np.array(img_array, dtype=np.float32)
+    print("Preprocessing time:", time.time() - start_time)
     
-    interpreter.set_tensor(input_details[0]['index'], img_array)
-    interpreter.invoke()
-    return interpreter.get_tensor(output_details[0]['index'])
+    features = model.predict(img_array)
+    predict_time = time.time()
+    print("Model prediction time:", predict_time - start_time)
+    
+    total_time = time.time() - start_time
+    print("Total extraction time:", total_time)
+
+    return features
 
 # Calculate cosine similarity
 def cosine_similarity(features1, features2):
