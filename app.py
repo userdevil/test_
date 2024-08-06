@@ -16,15 +16,25 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 # Function to preprocess the image
-def preprocess_image(img):
-    img = img.resize((224, 224))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = img_array / 255.0  # Rescale the image
+def preprocess_image(img_path):
+    img = Image.open(img_path).convert('RGB')  # Ensure RGB
+    img = img.resize((1, 1))  # Adjust to model's expected size
+    img_array = np.array(img, dtype=np.float32)
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    img_array /= 255.0  # Normalize
+
+    print("Image shape after preprocessing:", img_array.shape)  # Check shape
+
     return img_array
 
 # Extract features from an image using the TFLite model
+# Extract features from an image using the TFLite model
 def extract_features(img_array):
+    # Ensure that img_array is in the correct shape
+    img_array = np.array(img_array, dtype=np.float32)  # Ensure the type is float32
+    if not np.array_equal(img_array.shape, input_details[0]['shape']):
+        raise ValueError(f"Input shape {img_array.shape} does not match model's expected shape {input_details[0]['shape']}")
+    
     interpreter.set_tensor(input_details[0]['index'], img_array)
     interpreter.invoke()
     return interpreter.get_tensor(output_details[0]['index'])
