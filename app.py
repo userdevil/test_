@@ -9,7 +9,7 @@ import requests
 app = Flask(__name__)
 
 # URL of the Keras model
-MODEL_URL = "https://firebasestorage.googleapis.com/v0/b/test-75d65.appspot.com/o/cow_muzzle_feature_extractor.h5?alt=media&token=9bcaf85e-e935-4e49-84bb-2c0476a8e75c"
+MODEL_URL = "https://firebasestorage.googleapis.com/v0/b/test-75d65.appspot.com/o/cow_muzzle_feature_extractor.h5?alt=media&token=58fe8537-7fe1-45ac-a4e6-b92a3657c7ff"
 MODEL_PATH = "cow_muzzle_feature_extractor.h5"
 
 def download_model(url, save_path):
