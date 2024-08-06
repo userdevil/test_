@@ -1,18 +1,11 @@
 from flask import Flask, request, jsonify
 import numpy as np
 import tensorflow as tf
-from PIL import Image
+from tensorflow.keras.preprocessing import image
 import io
-import sqlite3
-import random
-import os
+from PIL import Image
 
 app = Flask(__name__)
-
-# Define a directory to save uploaded files
-UPLOAD_FOLDER = 'uploaded_files'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
 
 # Load TFLite model and allocate tensors
 interpreter = tf.lite.Interpreter(model_path="cow_muzzle_feature_extractor.tflite")
@@ -22,22 +15,11 @@ interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-# Print the expected input shape
-print('Expected input shape:', input_details[0]['shape'])
-
-# Database setup
-def init_db():
-    conn = sqlite3.connect('features.db')
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS features
-                      (id INTEGER PRIMARY KEY, feature BLOB, image_id TEXT)''')
-    conn.commit()
-    conn.close()
-    print("db created")
-
-def preprocess_image(img_path):
-    img = Image.open(img_path).convert('RGB')  # Ensure RGB
-    img = img.resize((1, 1))  # Adjust to model's expected size
+# Function to preprocess the image
+def preprocess_image(img):
+    img = img.convert('RGB')  # Ensure RGB
+    target_size = tuple(input_details[0]['shape'][1:3])  # Get target size from model
+    img = img.resize(target_size)  # Adjust to model's expected size
     img_array = np.array(img, dtype=np.float32)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     img_array /= 255.0  # Normalize
@@ -57,23 +39,6 @@ def extract_features(img_array):
     interpreter.invoke()
     return interpreter.get_tensor(output_details[0]['index'])
 
-# Save features to the database
-def save_features(features, image_id):
-    conn = sqlite3.connect('features.db')
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO features (feature, image_id) VALUES (?, ?)", (features.tobytes(), image_id))
-    conn.commit()
-    conn.close()
-
-# Get all features from the database
-def get_all_features():
-    conn = sqlite3.connect('features.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT feature, image_id FROM features")
-    rows = cursor.fetchall()
-    conn.close()
-    return [(np.frombuffer(row[0], dtype=np.float32), row[1]) for row in rows]
-
 # Calculate cosine similarity
 def cosine_similarity(features1, features2):
     dot_product = np.dot(features1, features2.T)
@@ -81,46 +46,34 @@ def cosine_similarity(features1, features2):
     norm2 = np.linalg.norm(features2)
     return dot_product / (norm1 * norm2)
 
-# Define prediction endpoint
-@app.route('/predict', methods=['POST'])
-def predict():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+# Define similarity endpoint
+@app.route('/similarity', methods=['POST'])
+def similarity():
+    if 'file1' not in request.files or 'file2' not in request.files:
+        return jsonify({'error': 'Please provide two image files'}), 400
     
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No file provided'}), 400
+    file1 = request.files['file1']
+    file2 = request.files['file2']
+
+    if file1.filename == '' or file2.filename == '':
+        return jsonify({'error': 'Please provide two valid image files'}), 400
 
     try:
-        # Save the file to the specified upload directory
-        print(file.filename)
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        print(file_path)
-        file.save(file_path)
+        img1 = Image.open(io.BytesIO(file1.read()))
+        img2 = Image.open(io.BytesIO(file2.read()))
 
-        # Process the image from the saved file path
-        img_array = preprocess_image(file_path)
-        features = extract_features(img_array).flatten()
+        img1_array = preprocess_image(img1)
+        img2_array = preprocess_image(img2)
 
-        all_features = get_all_features()
-        for saved_features, image_id in all_features:
-            similarity = cosine_similarity(features, saved_features)
-            if similarity >= 0.952:
-                return jsonify({'image_id': image_id})
+        features1 = extract_features(img1_array)
+        features2 = extract_features(img2_array)
 
-        new_image_id = str(random.randint(10, 99))
-        save_features(features, new_image_id)
+        similarity_score = cosine_similarity(features1, features2)
 
-        return jsonify({'image_id': new_image_id})
+        return jsonify({'similarity_score': float(similarity_score)})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-    finally:
-        # Optionally, you might want to remove the file after processing
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
