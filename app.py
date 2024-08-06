@@ -24,21 +24,16 @@ def preprocess_image(img_path):
     print("Image shape after preprocessing:", img_array.shape)
     return img_array
 
-# Extract features from an image using the Keras model
+# Extract features from an image using the TFLite model
 def extract_features(img_array):
-    start_time = time.time()
-
-    img_array = np.array(img_array, dtype=np.float32)
-    print("Preprocessing time:", time.time() - start_time)
+    # Ensure that img_array is in the correct shape
+    img_array = np.array(img_array, dtype=np.float32)  # Ensure the type is float32
+    if not np.array_equal(img_array.shape, input_details[0]['shape']):
+        raise ValueError(f"Input shape {img_array.shape} does not match model's expected shape {input_details[0]['shape']}")
     
-    features = model.predict(img_array)
-    predict_time = time.time()
-    print("Model prediction time:", predict_time - start_time)
-    
-    total_time = time.time() - start_time
-    print("Total extraction time:", total_time)
-
-    return features
+    interpreter.set_tensor(input_details[0]['index'], img_array)
+    interpreter.invoke()
+    return interpreter.get_tensor(output_details[0]['index'])
 
 # Calculate cosine similarity
 def cosine_similarity(features1, features2):
