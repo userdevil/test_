@@ -33,6 +33,7 @@ def init_db():
                       (id INTEGER PRIMARY KEY, feature BLOB, image_id TEXT)''')
     conn.commit()
     conn.close()
+    print("db created")
 
 def preprocess_image(img_path):
     img = Image.open(img_path).convert('RGB')  # Ensure RGB
@@ -92,7 +93,9 @@ def predict():
 
     try:
         # Save the file to the specified upload directory
+        print(file.filename)
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        print(file_path)
         file.save(file_path)
 
         # Process the image from the saved file path
