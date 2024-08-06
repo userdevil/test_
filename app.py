@@ -16,9 +16,10 @@ input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
 # Function to preprocess the image
-def preprocess_image(img_path):
-    img = Image.open(img_path).convert('RGB')  # Ensure RGB
-    img = img.resize((1, 1))  # Adjust to model's expected size
+def preprocess_image(img):
+    img = img.convert('RGB')  # Ensure RGB
+    target_size = tuple(input_details[0]['shape'][1:3])  # Get target size from model
+    img = img.resize(target_size)  # Adjust to model's expected size
     img_array = np.array(img, dtype=np.float32)
     img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
     img_array /= 255.0  # Normalize
@@ -27,7 +28,6 @@ def preprocess_image(img_path):
 
     return img_array
 
-# Extract features from an image using the TFLite model
 # Extract features from an image using the TFLite model
 def extract_features(img_array):
     # Ensure that img_array is in the correct shape
