@@ -118,10 +118,19 @@ def predict():
         features = extract_features(img_array).flatten()
 
         all_features = get_all_features()
+        highest_similarity = 0.0
+        best_match_id = None
         for saved_features, image_id in all_features:
             similarity = cosine_similarity(features, saved_features)
-            if similarity >= 0.952:
-                return jsonify({'image_id': image_id})
+            print(f"Calculated similarity: {similarity} with image_id: {image_id}")
+            if similarity > highest_similarity:
+                highest_similarity = similarity
+                best_match_id = image_id
+
+        print(f"Highest similarity: {highest_similarity} with image_id: {best_match_id}")
+
+        if highest_similarity >= 0.952:
+            return jsonify({'image_id': best_match_id})
 
         new_image_id = str(random.randint(10, 99))
         save_features(features, new_image_id)
