@@ -17,11 +17,10 @@ output_details = interpreter.get_output_details()
 
 # Function to preprocess and load an image
 def preprocess_image(img_path):
-    img = image.load_img(img_path, target_size=(224, 224))
+    img = image.load_img(img_path, target_size=(input_details[0]['shape'][1], input_details[0]['shape'][2]))
     img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = img_array / 255.0  # Rescale the image
-    print("Image shape after preprocessing:", img_array.shape)
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    img_array /= 255.0  # Normalize
     return img_array
 
 # Extract features from an image using the TFLite model
