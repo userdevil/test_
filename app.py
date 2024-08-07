@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import numpy as np
 from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
 from PIL import Image
 import io
 import sqlite3
