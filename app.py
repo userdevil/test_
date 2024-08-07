@@ -116,12 +116,12 @@ def predict():
         for saved_features, image_id in all_features:
             similarity = cosine_similarity(features, saved_features)
             if similarity >= 0.841:
-                return jsonify({'image_id': image_id})
+                return jsonify({'message': 'ID already exists', 'image_id': image_id})
 
         new_image_id = str(random.randint(10, 99))
         save_features(features, new_image_id)
 
-        return jsonify({'image_id': new_image_id})
+        return jsonify({'message': 'New ID Added', 'image_id': image_id})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
